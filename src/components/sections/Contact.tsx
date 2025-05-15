@@ -35,36 +35,33 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      // Prepare form data for Netlify
-      const formData = new FormData(e.target as HTMLFormElement);
-      formData.append("form-name", "contact"); // Must match your form's name attribute
+      const formData = new URLSearchParams();
+      formData.append("form-name", "contact");
+      formData.append("name", formState.name);
+      formData.append("email", formState.email);
+      formData.append("message", formState.message);
 
-      // Submit to Netlify
+      // Add honeypot field (empty)
+      formData.append("bot-field", "");
+
       const response = await fetch("/", {
         method: "POST",
-        body: new URLSearchParams(formData as any).toString(),
+        body: formData.toString(),
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
-      if (response.ok) {
-        setSubmitStatus("success");
-        // Reset form after successful submission
-        setFormState({ name: "", email: "", message: "" });
-      } else {
-        throw new Error("Network response was not ok");
-      }
+      if (!response.ok) throw new Error(response.statusText);
+
+      setSubmitStatus("success");
+      setFormState({ name: "", email: "", message: "" });
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Submission error:", error);
       setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
-
-      // Reset status after 5 seconds (whether success or error)
-      setTimeout(() => {
-        setSubmitStatus("idle");
-      }, 5000);
+      setTimeout(() => setSubmitStatus("idle"), 5000);
     }
   };
 
@@ -155,7 +152,14 @@ export default function Contact() {
             Send Me a Message
           </h3>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            name="contact"
+            method="POST"
+            data-netlify="true"
+            netlify-honeypot="bot-field"
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             <motion.div
               custom={0}
               variants={formItemVariants}
@@ -163,6 +167,12 @@ export default function Contact() {
               whileInView="visible"
               viewport={{ once: true }}
             >
+              <input type="hidden" name="form-name" value="contact" />
+              <div hidden>
+                <label>
+                  Don't fill this out: <input name="bot-field" />
+                </label>
+              </div>
               <label
                 htmlFor="name"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
